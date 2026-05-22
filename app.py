@@ -5,8 +5,9 @@ import uuid
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from dotenv import load_dotenv
-from spotipy.oauth2 import SpotifyOAuth
 import spotipy
+from spotipy.oauth2 import SpotifyOAuth
+from spotipy.cache_handler import MemoryCacheHandler # <-- Added for multi-user session tracking
 from strands import Agent
 from strands.models.openai import OpenAIModel
 
@@ -27,7 +28,10 @@ model = OpenAIModel(
 agent = Agent(model=model)
 
 app = FastAPI()
+
+# In-memory session store (Isolated via browser cookies)
 sessions = {}
+
 @app.get("/me")
 def me(request: Request):
     session_id = request.cookies.get("session_id")
@@ -37,15 +41,16 @@ def me(request: Request):
     sp = spotipy.Spotify(auth=token_info["access_token"])
     user = sp.current_user()
     return {"session_id": session_id, "spotify_user": user["display_name"], "email": user["email"]}
-# In-memory session store
-
 
 def get_spotify_oauth():
+    # Passing show_dialog and MemoryCacheHandler here prevents server token-bleeding
     return SpotifyOAuth(
         client_id=SPOTIFY_CLIENT_ID,
         client_secret=SPOTIFY_CLIENT_SECRET,
         redirect_uri=SPOTIFY_REDIRECT_URI,
-        scope="user-read-currently-playing user-read-email"
+        scope="user-read-currently-playing user-read-email",
+        show_dialog=True,
+        cache_handler=MemoryCacheHandler() 
     )
 
 def get_lyrics(title, artist):
@@ -95,8 +100,8 @@ Return a JSON object with EXACTLY these fields and nothing else, no markdown:
 def login(request: Request, response: Response):
     session_id = str(uuid.uuid4())
     oauth = get_spotify_oauth()
+    # Corrected method usage: argument 'show_dialog' moved to the factory helper above
     auth_url = oauth.get_authorize_url(state=session_id)
-    auth_url += "&show_dialog=true"
     resp = RedirectResponse(auth_url)
     resp.set_cookie("session_id", session_id, max_age=3600, samesite="lax")
     return resp
@@ -106,6 +111,7 @@ def logout():
     resp = RedirectResponse("/")
     resp.delete_cookie("session_id")
     return resp
+
 @app.get("/callback")
 def callback(request: Request, code: str = None, state: str = None):
     if not code:
@@ -115,7 +121,7 @@ def callback(request: Request, code: str = None, state: str = None):
     session_id = state or request.cookies.get("session_id")
     sessions[session_id] = token_info
     resp = RedirectResponse("/")
-    resp.set_cookie("session_id", session_id, max_age=3600)
+    resp.set_cookie("session_id", session_id, max_age=3600, samesite="lax")
     return resp
 
 @app.get("/now-playing")
@@ -307,8 +313,6 @@ def frontend():
 
             renderCard(data);
         }
-
-        
 
         function showAnalyzeButton() {
          document.getElementById('actions').innerHTML = `
