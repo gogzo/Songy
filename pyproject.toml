@@ -1,0 +1,17 @@
+[project]
+name = "New-ai-project"
+version = "0.1.0"
+description = "This is my new ai project"
+authors = [{name = "Martina Gogova", email = "martinagogova16@gmail.com"}]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.136.1",
+    "lyricsgenius>=3.12.1",
+    "openai>=2.38.0",
+    "python-dotenv>=1.2.2",
+    "spotipy>=2.26.0",
+    "strands-agents-tools>=0.6.0",
+    "strands-agents[openai]>=1.41.0",
+    "uvicorn>=0.47.0",
+]
