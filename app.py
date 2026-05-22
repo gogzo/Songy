@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from dotenv import load_dotenv
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-from spotipy.cache_handler import MemoryCacheHandler # <-- Added for multi-user session tracking
+from spotipy.cache_handler import MemoryCacheHandler
 from strands import Agent
 from strands.models.openai import OpenAIModel
 
@@ -17,15 +17,6 @@ SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
 SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
 SPOTIFY_REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI")
 OPENROUTER_KEY = os.getenv("OPENROUTER_KEY")
-
-model = OpenAIModel(
-    client_args={
-        "api_key": OPENROUTER_KEY,
-        "base_url": "https://openrouter.ai/api/v1"
-    },
-    model_id="openai/gpt-oss-120b:free",
-)
-agent = Agent(model=model)
 
 app = FastAPI()
 
@@ -91,6 +82,18 @@ Return a JSON object with EXACTLY these fields and nothing else, no markdown:
   "most_powerful_line": "the most impactful line and why",
   "one_word_summary": "one word"
 }}"""
+
+    # Instantiating the model and agent inside the scope of the request prevents 
+    # multi-user collision and Strands Concurrency exceptions.
+    model = OpenAIModel(
+        client_args={
+            "api_key": OPENROUTER_KEY,
+            "base_url": "https://openrouter.ai/api/v1"
+        },
+        model_id="openai/gpt-oss-120b:free",
+    )
+    agent = Agent(model=model)
+
     response = agent(prompt)
     text = str(response)
     clean = text[text.find("{"):text.rfind("}")+1]
@@ -100,7 +103,6 @@ Return a JSON object with EXACTLY these fields and nothing else, no markdown:
 def login(request: Request, response: Response):
     session_id = str(uuid.uuid4())
     oauth = get_spotify_oauth()
-    # Corrected method usage: argument 'show_dialog' moved to the factory helper above
     auth_url = oauth.get_authorize_url(state=session_id)
     resp = RedirectResponse(auth_url)
     resp.set_cookie("session_id", session_id, max_age=3600, samesite="lax")
@@ -285,7 +287,7 @@ def frontend():
     </style>
 </head>
 <body>
-    <h1>&#9835; Song Meaning Analyzer</h1>
+    <h1>♫ Song Meaning Analyzer</h1>
     <div id="status">Checking your session...</div>
     <div id="card"></div>
     <div id="actions"></div>
