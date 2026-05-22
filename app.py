@@ -28,6 +28,15 @@ agent = Agent(model=model)
 
 app = FastAPI()
 
+@app.get("/me")
+def me(request: Request):
+    session_id = request.cookies.get("session_id")
+    token_info = sessions.get(session_id)
+    if not token_info:
+        return {"error": "not logged in", "session_id": session_id}
+    sp = spotipy.Spotify(auth=token_info["access_token"])
+    user = sp.current_user()
+    return {"session_id": session_id, "spotify_user": user["display_name"], "email": user["email"]}
 # In-memory session store
 sessions = {}
 
