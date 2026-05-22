@@ -27,7 +27,7 @@ model = OpenAIModel(
 agent = Agent(model=model)
 
 app = FastAPI()
-
+sessions = {}
 @app.get("/me")
 def me(request: Request):
     session_id = request.cookies.get("session_id")
@@ -38,7 +38,7 @@ def me(request: Request):
     user = sp.current_user()
     return {"session_id": session_id, "spotify_user": user["display_name"], "email": user["email"]}
 # In-memory session store
-sessions = {}
+
 
 def get_spotify_oauth():
     return SpotifyOAuth(
@@ -100,6 +100,11 @@ def login(request: Request, response: Response):
     resp.set_cookie("session_id", session_id, max_age=3600, samesite="lax")
     return resp
 
+@app.get("/logout")
+def logout():
+    resp = RedirectResponse("/")
+    resp.delete_cookie("session_id")
+    return resp
 @app.get("/callback")
 def callback(request: Request, code: str = None, state: str = None):
     if not code:
@@ -302,9 +307,12 @@ def frontend():
             renderCard(data);
         }
 
+        
+
         function showAnalyzeButton() {
-            document.getElementById('actions').innerHTML = `
-                <button class="btn analyze-btn" id="btn" onclick="fetchSong()">Analyze Current Song</button>`;
+         document.getElementById('actions').innerHTML = `
+        <button class="btn analyze-btn" id="btn" onclick="fetchSong()">Analyze Current Song</button>
+        <button class="btn" style="background:rgba(255,255,255,0.05); border:0.5px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.4); margin-top:0.5rem;" onclick="window.location.href='/logout'">Switch Account</button>`;
         }
 
         async function fetchSong() {
