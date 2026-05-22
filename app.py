@@ -45,7 +45,7 @@ def get_spotify_oauth():
         client_id=SPOTIFY_CLIENT_ID,
         client_secret=SPOTIFY_CLIENT_SECRET,
         redirect_uri=SPOTIFY_REDIRECT_URI,
-        scope="user-read-currently-playing"
+        scope="user-read-currently-playing user-read-email"
     )
 
 def get_lyrics(title, artist):
