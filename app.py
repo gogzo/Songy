@@ -92,12 +92,12 @@ Return a JSON object with EXACTLY these fields and nothing else, no markdown:
     return json.loads(clean)
 
 @app.get("/login")
-def login(response: Response):
+def login(request: Request, response: Response):
     session_id = str(uuid.uuid4())
     oauth = get_spotify_oauth()
     auth_url = oauth.get_authorize_url(state=session_id)
     resp = RedirectResponse(auth_url)
-    resp.set_cookie("session_id", session_id, max_age=3600)
+    resp.set_cookie("session_id", session_id, max_age=3600, samesite="lax")
     return resp
 
 @app.get("/callback")
